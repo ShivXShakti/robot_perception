@@ -7,6 +7,9 @@ from tf2_ros import Buffer, TransformListener
 import tf2_geometry_msgs
 import time
 from depthai_ros_msgs.msg import TrackDetection2DArray 
+import cv2
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 
 
 class ObjectPoseTransformer(Node):
@@ -14,11 +17,19 @@ class ObjectPoseTransformer(Node):
         super().__init__('object_pose_transformer')
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.current_img = None
+        self.bridge = CvBridge()
 
         self.create_subscription(
             TrackDetection2DArray,
             '/color/yolo_Spatial_tracklets',
             self.listener_callback,
+            10
+        )
+        self.create_subscription(
+            Image,
+            '/color/image',
+            self.image_callback,
             10
         )
         self.publisher = self.create_publisher(ObjPoseArray, 'object_pose_torso', 10)
@@ -33,8 +44,14 @@ class ObjectPoseTransformer(Node):
                             "refrigerator",  "book",         "clock",         "vase",          "scissors",    "teddy bear",  "hair drier",  "toothbrush"]
 
         self.get_logger().info("ObjectPoseTransformer YOLO initialized")
-
+    def image_callback(self, msg: Image):
+        # Convert ROS image to OpenCV
+        self.current_img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+    
     def listener_callback(self, msg):
+        if self.current_img is None:
+            return
+        img = self.current_img.copy()
         msg_array = ObjPoseArray()
         for detection in msg.detections:
             if not detection.results:
@@ -42,12 +59,27 @@ class ObjectPoseTransformer(Node):
             result = detection.results[0]
             class_id = int(result.hypothesis.class_id)
             score = result.hypothesis.score
+
+            cx = int(detection.bbox.center.position.x)
+            cy = int(detection.bbox.center.position.y)
+            w = int(detection.bbox.size_x)
+            h = int(detection.bbox.size_y)
+            x1 = int(cx - w / 2)
+            y1 = int(cy - h / 2)
+            x2 = int(cx + w / 2)
+            y2 = int(cy + h / 2)
+            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(img, f"ID:{self.object_classes[class_id]} ({score:.2f})", 
+                            (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX,
+                            0.5, (0, 255, 0), 2)
+
+            print(f"====================Detected Objects===================:\n {detection.bbox}")
+            
             pose = result.pose.pose
             pose_stamped = PoseStamped()
             pose_stamped.header.stamp = rclpy.time.Time().to_msg()
             pose_stamped.header.frame_id = msg.header.frame_id
             pose_stamped.pose = pose
-
             try:
                 transformed_pose = self.tf_buffer.transform(
                     pose_stamped,
@@ -61,6 +93,8 @@ class ObjectPoseTransformer(Node):
                 msg_array.data.append(obj)
             except Exception as e:
                 self.get_logger().warn(f"Could not transform pose: {e}")
+        cv2.imshow("YOLO Detections", img)
+        cv2.waitKey(1)
         print(f"====================Detected Objects===================:\n {msg_array.data}")
         self.publisher.publish(msg_array)
 

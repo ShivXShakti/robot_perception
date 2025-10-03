@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.node import Node
 
-from dualarm_custom_msgs.msg import ObjPoseArray
+from your_pkg_name.msg import ObjPoseArray  # replace with your package name
 
 
 class ObjPoseSubscriber(Node):
@@ -10,11 +10,11 @@ class ObjPoseSubscriber(Node):
         super().__init__('obj_pose_subscriber')
         self.subscription = self.create_subscription(
             ObjPoseArray,
-            'object_pose_torso', 
+            'obj_pose_array',   # topic name
             self.listener_callback,
             10
         )
-        self.subscription
+        self.subscription  # prevent unused variable warning
 
     def listener_callback(self, msg: ObjPoseArray):
         if not msg.data:

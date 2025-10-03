@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'pose_publisher = robot_perception.pose_publisher:main'
+            'pose_publisher = robot_perception.pose_publisher:main',
+            'pose_sub = robot_perception.pose_sub:main'
         ],
     },
 )
