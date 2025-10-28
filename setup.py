@@ -21,7 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             'pose_publisher = robot_perception.pose_publisher:main',
-            'pose_sub = robot_perception.pose_sub:main'
+            'pose_sub = robot_perception.pose_sub:main',
+            'yolo_spatial_sub = robot_perception.yolo_spatial_sub:main'
         ],
     },
 )
