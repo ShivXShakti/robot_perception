@@ -22,7 +22,7 @@ class ObjectPoseTransformer(Node):
 
         self.create_subscription(
             TrackDetection2DArray,
-            '/color/yolo_Spatial_tracklets',
+            '/color/yolov4_Spatial_tracklets',
             self.listener_callback,
             10
         )
@@ -75,7 +75,7 @@ class ObjectPoseTransformer(Node):
             cy_img = img_h // 2
             # Draw image center (blue)
             cv2.circle(img, (cx_img, cy_img), 6, (255, 0, 0), -1)
-            cv2.circle(img, (cx, cy), 6, (0, 0, 255), -1)
+            #cv2.circle(img, (cx, cy), 6, (0, 0, 255), -1)
 
             if self.object_classes[class_id] == "bottle":
                 
@@ -85,27 +85,28 @@ class ObjectPoseTransformer(Node):
                                 (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX,
                                 0.5, (0, 255, 0), 2)
             
-            pose = result.pose.pose
-            pose_stamped = PoseStamped()
-            pose_stamped.header.stamp = rclpy.time.Time().to_msg()
-            pose_stamped.header.frame_id = msg.header.frame_id  #oak_rgb_camera_optical_frame
-            pose_stamped.pose = pose
-            try:
-                transformed_pose = self.tf_buffer.transform(
-                    pose_stamped,
-                    'torso_hw',
-                    timeout=rclpy.duration.Duration(seconds=1.0)
-                )
-                #p = transformed_pose.pose.position
-                #p.z = 1.55 + p.z 
-                #transformed_pose.pose.position = p
-                transformed_pose.header.stamp = self.get_clock().now().to_msg()
-                obj = ObjPose()
-                obj.object_name = f"{self.object_classes[class_id]}"
-                obj.pose_stamped.pose = transformed_pose.pose
-                msg_array.data.append(obj)
-            except Exception as e:
-                self.get_logger().warn(f"Could not transform pose: {e}")
+                pose = result.pose.pose
+                pose_stamped = PoseStamped()
+                pose_stamped.header.stamp = rclpy.time.Time().to_msg()
+                pose_stamped.header.frame_id = msg.header.frame_id  #oak_rgb_camera_optical_frame
+                pose_stamped.pose = pose
+                try:
+                    transformed_pose = self.tf_buffer.transform(
+                        pose_stamped,
+                        'torso_hw',
+                        timeout=rclpy.duration.Duration(seconds=1.0)
+                    )
+                    #p = transformed_pose.pose.position
+                    #p.z = 1.55 + p.z 
+                    #transformed_pose.pose.position = p
+                    transformed_pose.header.stamp = self.get_clock().now().to_msg()
+                    obj = ObjPose()
+                    obj.object_name = f"{self.object_classes[class_id]}"
+                    obj.pose_stamped.pose = transformed_pose.pose
+                    msg_array.data.append(obj)
+                    self.get_logger().info(f"pose: {obj.pose_stamped.pose}")
+                except Exception as e:
+                    self.get_logger().warn(f"Could not transform pose: {e}")
         cv2.imshow("YOLO Detections", img)
         cv2.waitKey(1)
         self.publisher.publish(msg_array)

@@ -23,7 +23,7 @@ class ObjectPoseTransformer(Node):
 
         self.create_subscription(
             TrackDetection2DArray,
-            '/color/yolo_Spatial_tracklets',
+            '/color/yolov4_Spatial_tracklets',
             self.listener_callback,
             10
         )
